@@ -12,7 +12,7 @@ class SlideView: UIView {
     let identifier = "SLIDECELL1"
     var numberOfItem : Int?
     var datsSource : SlideViewDatasource?
-    
+    var currentItem : IndexPath = IndexPath(row: 0, section: 0)
     fileprivate let collection : UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -26,6 +26,9 @@ class SlideView: UIView {
     
     fileprivate let pageControl : UIPageControl = {
         let pc = UIPageControl()
+        pc.pageIndicatorTintColor = #colorLiteral(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
+        pc.currentPageIndicatorTintColor = #colorLiteral(red: 0.6666666865, green: 0.6666666865, blue: 0.6666666865, alpha: 1)
+      
         return pc
     }()
     
@@ -76,28 +79,29 @@ class SlideView: UIView {
             let btnPrevious = UIButton(frame: CGRect(x: self.bounds.minX , y: (self.bounds.maxY - h) / 2, width: w, height: h))
             btnPrevious.backgroundColor = .none
             btnPrevious.setImage(UIImage(systemName: "chevron.backward"), for: UIControl.State.normal)
-            btnPrevious.scalesLargeContentImage = true
+//            btnPrevious.scalesLargeContentImage = true
             btnPrevious.tintColor = #colorLiteral(red: 1, green: 1, blue: 1, alpha: 1)
             btnPrevious.contentVerticalAlignment = .fill
             btnPrevious.contentHorizontalAlignment = .fill
-            btnPrevious.imageEdgeInsets = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+            btnPrevious.imageEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 5)
             btnPrevious.addTarget(self, action: #selector(goPrevious(_:)), for: .touchDown)
             
             return btnPrevious
         }()
         
         self.addSubview(btnPreviousPage)
+        
         // set up btn Next
         let btnNextPage : UIButton = {
             
             let btnNext : UIButton = UIButton(frame: CGRect(x: self.bounds.maxX - w , y: (self.bounds.maxY - h) / 2, width: w, height: h))
             btnNext.backgroundColor = .none
             btnNext.setImage(UIImage(systemName: "chevron.forward"), for: UIControl.State.normal)
-            btnNext.scalesLargeContentImage = true
+//            btnNext.scalesLargeContentImage = true
             btnNext.tintColor = #colorLiteral(red: 1, green: 1, blue: 1, alpha: 1)
             btnNext.contentVerticalAlignment = .fill
             btnNext.contentHorizontalAlignment = .fill
-            btnNext.imageEdgeInsets = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+            btnNext.imageEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 5)
             btnNext.addTarget(self, action: #selector(goNext(_:)), for: .touchDown)
             
             return btnNext
@@ -123,15 +127,20 @@ class SlideView: UIView {
     }
     @objc func goNext(_ sender:UIButton) {
         
-        let currentPage = pageControl.currentPage
+//        let currentPage = pageControl.currentPage
+//
+        
         guard let number = numberOfItem else {
             return
         }
-        let index = currentPage >= number - 1 ? IndexPath(row: 0 , section: 0) :  IndexPath(row: currentPage + 1 , section: 0)
-        print(index)
+        
+//        let index = currentItem.row
+//        let index = currentPage >= number - 1 ? IndexPath(row: 0 , section: 0) :  IndexPath(row: currentPage + 1 , section: 0)
+        let index = IndexPath(row: currentItem.row  + 1 , section: 0)
       
         collection.selectItem(at: index, animated: true, scrollPosition: UICollectionView.ScrollPosition.centeredHorizontally)
-        pageControl.currentPage = index.row
+        pageControl.currentPage = index.row % number
+        self.currentItem = index
        
     }
     
@@ -142,13 +151,13 @@ extension SlideView : UICollectionViewDataSource{
         guard let numberOfItem = datsSource?.slideView(numberOfItem: self) else{
             return 0
         }
-        return numberOfItem
+        return numberOfItem * 10
         
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath) as! SlideCell
-        guard let url = (datsSource?.slideView(slideView: self, itemAt: indexPath.row)) else{
+        guard let num = numberOfItem,let url = (datsSource?.slideView(slideView: self, itemAt: indexPath.row % num)) else{
             return cell
         }
         cell.setImage(urlStr : url)
@@ -172,6 +181,7 @@ extension SlideView : UICollectionViewDelegateFlowLayout{
 extension SlideView:UICollectionViewDelegate{
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        // get index of item
         var visibleRect = CGRect()
         
         visibleRect.origin = collection.contentOffset
@@ -179,8 +189,11 @@ extension SlideView:UICollectionViewDelegate{
         
         let visiblePoint = CGPoint(x: visibleRect.midX, y: visibleRect.midY)
         print(visiblePoint)
-        guard let indexPath = collection.indexPathForItem(at: visiblePoint) else { return }
-        pageControl.currentPage = indexPath.row
+        guard let indexPath = collection.indexPathForItem(at: visiblePoint), let num = numberOfItem else { return }
+        currentItem = indexPath
+        pageControl.currentPage = indexPath.row % num
+     
+       
     }
     
     
@@ -225,7 +238,7 @@ class SlideCell: UICollectionViewCell {
            
             let url = URL(string: urlStr)
             let processor = DownsamplingImageProcessor(size: imageView.bounds.size)
-                         |> RoundCornerImageProcessor(cornerRadius: 20)
+                         |> RoundCornerImageProcessor(cornerRadius: 0)
             imageView.kf.indicatorType = .activity
             imageView.kf.setImage(
                 with: url,
